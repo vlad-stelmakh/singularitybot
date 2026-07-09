@@ -55,7 +55,7 @@ const config = {
     process.env.MCP_ENTRY_POINT || path.join(__dirname, "..", "mcp.js"),
 
   // Часовой пояс владельца (используется агентом при расстановке дат/времени задач)
-  ownerTimezone: process.env.OWNER_TIMEZONE || "+03:00",
+  ownerTimezone: process.env.OWNER_TIMEZONE || "+04:00",
 
   // Максимальное число итераций цикла вызова инструментов за один запрос
   maxToolIterations: Number(process.env.MAX_TOOL_ITERATIONS || 12),
