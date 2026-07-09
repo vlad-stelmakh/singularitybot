@@ -27,5 +27,13 @@ entry points and no build/lint/test tooling. Dependencies are installed by the s
   (`MockStreamableHTTPServerTransport` does not implement the SDK transport interface). This is a
   pre-existing repo limitation; only `GET /health` is functional there.
 - The Telegram bot requires `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY`, and `ALLOWED_USER_IDS` (owner Telegram
-  user IDs, comma-separated) in `.env` (copy `.env.example`). Missing vars fail fast at startup via the
-  guard in `bot/config.js`. The bot spawns `mcp.js` as a child process over stdio.
+  user IDs, comma-separated); `SINGULARITY_ACCESS_TOKEN` is needed for real task/project operations.
+  Missing vars fail fast at startup via the guard in `bot/config.js`. The bot spawns `mcp.js` as a child
+  process over stdio.
+- Config is loaded with `dotenv` (`bot/config.js`), which reads a local `.env` but does **not** override
+  vars already present in `process.env`. In cloud VMs the secrets are injected as env vars, so the bot
+  reads them directly. If you launch the bot from a detached/login shell (e.g. a fresh `tmux` session)
+  that does not inherit those injected vars, create a local `.env` (copy `.env.example`, it is gitignored).
+- The bot long-polls Telegram; only one process may poll a given bot token at a time (a second one gets a
+  Telegram 409 conflict). The per-message pipeline is `bot/agent.js` `runAgent` (OpenAI function-calling ->
+  MCP tool call -> Singularity API) — it can be exercised directly without the Telegram transport.
