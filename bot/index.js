@@ -21,7 +21,6 @@ const { config } = require("./config");
 const { SingularityMcpClient } = require("./mcp-client");
 const { buildSystemPrompt } = require("./prompt");
 const { runAgent, transcribeAudio } = require("./agent");
-const { toTelegramHtml, stripMarkdown, splitIntoChunks } = require("./format");
 
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
@@ -78,18 +77,9 @@ async function withChatLock(chatId, fn) {
 
 async function replyLong(ctx, text) {
   const safe = text && text.trim() ? text : "Готово.";
-  // Режем исходный Markdown на части, затем каждую конвертируем в Telegram-HTML.
-  for (const chunk of splitIntoChunks(safe)) {
-    try {
-      await ctx.reply(toTelegramHtml(chunk), {
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      });
-    } catch (err) {
-      // Если Telegram не смог разобрать HTML — шлём «чистый» текст без разметки.
-      console.error("Ошибка отправки HTML, откат на текст:", err.message);
-      await ctx.reply(stripMarkdown(chunk));
-    }
+  const limit = 4000;
+  for (let i = 0; i < safe.length; i += limit) {
+    await ctx.reply(safe.slice(i, i + limit));
   }
 }
 
