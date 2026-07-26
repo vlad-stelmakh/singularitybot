@@ -192,7 +192,8 @@ class ApiClient {
      * @returns Updated project
      */
     async updateProject(project) {
-        const response = await this.client.patch(`/v2/project/${project.id}`, project, this.createRequestConfig());
+        const { id, ...updateData } = project;
+        const response = await this.client.patch(`/v2/project/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     /**
@@ -236,7 +237,8 @@ class ApiClient {
      * @returns Updated task group
      */
     async updateTaskGroup(taskGroup) {
-        const response = await this.client.patch(`/v2/task-group/${taskGroup.id}`, taskGroup, this.createRequestConfig());
+        const { id, ...updateData } = taskGroup;
+        const response = await this.client.patch(`/v2/task-group/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     /**
@@ -291,7 +293,8 @@ class ApiClient {
      * @returns Updated task
      */
     async updateTask(task) {
-        const response = await this.client.patch(`/v2/task/${task.id}`, task, this.createRequestConfig());
+        const { id, ...updateData } = task;
+        const response = await this.client.patch(`/v2/task/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     /**
@@ -335,7 +338,8 @@ class ApiClient {
      * @returns Updated note
      */
     async updateNote(note) {
-        const response = await this.client.patch(`/v2/note/${note.id}`, note, this.createRequestConfig());
+        const { id, ...updateData } = note;
+        const response = await this.client.patch(`/v2/note/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     /**
@@ -379,7 +383,8 @@ class ApiClient {
      * @returns Updated kanban status
      */
     async updateKanbanStatus(kanbanStatus) {
-        const response = await this.client.patch(`/v2/kanban-status/${kanbanStatus.id}`, kanbanStatus, this.createRequestConfig());
+        const { id, ...updateData } = kanbanStatus;
+        const response = await this.client.patch(`/v2/kanban-status/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     /**
@@ -423,7 +428,8 @@ class ApiClient {
      * @returns Updated kanban task status
      */
     async updateKanbanTaskStatus(kanbanTaskStatus) {
-        const response = await this.client.patch(`/v2/kanban-task-status/${kanbanTaskStatus.id}`, kanbanTaskStatus, this.createRequestConfig());
+        const { id, ...updateData } = kanbanTaskStatus;
+        const response = await this.client.patch(`/v2/kanban-task-status/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     /**
@@ -451,7 +457,8 @@ class ApiClient {
         return response.data;
     }
     async updateHabit(habit) {
-        const response = await this.client.patch(`/v2/habit/${habit.id}`, habit, this.createRequestConfig());
+        const { id, ...updateData } = habit;
+        const response = await this.client.patch(`/v2/habit/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     async deleteHabit(id) {
@@ -478,7 +485,8 @@ class ApiClient {
         return response.data;
     }
     async updateHabitDailyProgress(progress) {
-        const response = await this.client.patch(`/v2/habit-progress/${progress.id}`, progress, this.createRequestConfig());
+        const { id, ...updateData } = progress;
+        const response = await this.client.patch(`/v2/habit-progress/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     async deleteHabitDailyProgress(id) {
@@ -504,7 +512,8 @@ class ApiClient {
         return response.data;
     }
     async updateChecklistItem(item) {
-        const response = await this.client.patch(`/v2/checklist-item/${item.id}`, item, this.createRequestConfig());
+        const { id, ...updateData } = item;
+        const response = await this.client.patch(`/v2/checklist-item/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     async deleteChecklistItem(id) {
@@ -568,7 +577,8 @@ class ApiClient {
         return response.data;
     }
     async updateTag(tag) {
-        const response = await this.client.patch(`/v2/tag/${tag.id}`, tag, this.createRequestConfig());
+        const { id, ...updateData } = tag;
+        const response = await this.client.patch(`/v2/tag/${id}`, updateData, this.createRequestConfig());
         return response.data;
     }
     async deleteTag(id) {
