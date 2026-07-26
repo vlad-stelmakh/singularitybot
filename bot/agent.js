@@ -7,6 +7,37 @@
 
 const fs = require("fs");
 
+// Наивный ISO-datetime со временем, но без часового пояса
+// (например "2026-07-27T18:20:00" или "2026-07-27T18:20:00.000").
+// Голая дата "YYYY-MM-DD" (useTime: false) намеренно не матчится.
+const NAIVE_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d{1,3})?$/;
+
+/**
+ * Рекурсивно дописывает смещение часового пояса владельца к строкам
+ * даты-времени без явного пояса. SingularityApp API требует ISO-8601
+ * с явным смещением (Z или ±HH:MM), иначе возвращает 400 Bad Request.
+ *
+ * @param {*} value - аргументы инструмента (объект/массив/примитив)
+ * @param {string} tz - смещение владельца, например "+03:00"
+ * @returns {*} значение с нормализованными датами
+ */
+function normalizeDateTimes(value, tz) {
+  if (typeof value === "string") {
+    return NAIVE_DATETIME_RE.test(value) ? `${value}${tz}` : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeDateTimes(item, tz));
+  }
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, val] of Object.entries(value)) {
+      out[key] = normalizeDateTimes(val, tz);
+    }
+    return out;
+  }
+  return value;
+}
+
 /**
  * Запускает цикл общения с моделью и вызова инструментов MCP.
  *
@@ -49,6 +80,10 @@ async function runAgent({ openai, mcpClient, config, messages, onToolCall }) {
           content: `Ошибка разбора аргументов инструмента: ${err.message}`,
         });
         continue;
+      }
+
+      if (config.ownerTimezone) {
+        args = normalizeDateTimes(args, config.ownerTimezone);
       }
 
       if (onToolCall) {
