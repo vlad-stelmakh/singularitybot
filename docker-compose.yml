@@ -1,0 +1,16 @@
+services:
+  bot:
+    build: .
+    image: singularity-mcp-server:latest
+    container_name: singularity-bot
+    # Автоперезапуск при падении и после перезагрузки VPS.
+    restart: unless-stopped
+    # Секреты и настройки берутся из .env (см. .env.example).
+    env_file:
+      - .env
+    # Ограничение размера логов, чтобы не забить диск на VPS.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
