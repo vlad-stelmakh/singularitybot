@@ -9,6 +9,21 @@ exports.ApiClient = void 0;
  */
 const axios_1 = __importDefault(require("axios"));
 const auth_1 = require("./utils/auth");
+/**
+ * Приводит значение даты к UTC ISO-8601 (с суффиксом Z).
+ * Диапазонные query-параметры (startDateFrom/startDateTo, dateFrom/dateTo)
+ * API принимает только в UTC: оффсет вида +03:00/+04:00 отклоняется как
+ * "Invalid date value". Значение с оффсетом/без него корректно переводится
+ * в UTC; нераспознанные значения возвращаются без изменений.
+ * @param {*} value
+ * @returns {*}
+ */
+function toUtcIso(value) {
+    if (value === undefined || value === null || value === "")
+        return value;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? value : d.toISOString();
+}
 class ApiClient {
     /**
      * Creates a new API client
@@ -263,8 +278,8 @@ class ApiClient {
                 projectId: params.projectId,
                 parent: params.parent,
                 includeAllRecurrenceInstances: params.includeAllRecurrenceInstances,
-                startDateFrom: params.startDateFrom,
-                startDateTo: params.startDateTo,
+                startDateFrom: toUtcIso(params.startDateFrom),
+                startDateTo: toUtcIso(params.startDateTo),
             }),
         }));
         return response.data;
@@ -550,8 +565,8 @@ class ApiClient {
     async listTimeStats(params = {}) {
         const response = await this.client.get('/v2/time-stat', this.createRequestConfig({
             params: this.cleanParams({
-                dateFrom: params.dateFrom,
-                dateTo: params.dateTo,
+                dateFrom: toUtcIso(params.dateFrom),
+                dateTo: toUtcIso(params.dateTo),
                 relatedTaskId: params.relatedTaskId,
                 maxCount: params.maxCount,
             }),
@@ -561,8 +576,8 @@ class ApiClient {
     async deleteBulkTimeStats(params) {
         const response = await this.client.delete('/v2/time-stat', this.createRequestConfig({
             params: this.cleanParams({
-                dateFrom: params.dateFrom,
-                dateTo: params.dateTo,
+                dateFrom: toUtcIso(params.dateFrom),
+                dateTo: toUtcIso(params.dateTo),
                 relatedTaskId: params.relatedTaskId,
             }),
         }));
