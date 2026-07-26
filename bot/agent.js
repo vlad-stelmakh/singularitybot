@@ -39,6 +39,23 @@ function normalizeDateTimes(value, tz) {
 }
 
 /**
+ * Определяет значение reasoning_effort для запроса.
+ * - Если задан явно в конфиге (OPENAI_REASONING_EFFORT) — используется он.
+ * - Иначе для reasoning-моделей семейства gpt-5.x подставляется "none",
+ *   т.к. в /v1/chat/completions function tools нельзя сочетать с
+ *   reasoning_effort != "none".
+ * - Для остальных моделей (например gpt-4o) параметр не отправляется.
+ *
+ * @param {object} config
+ * @returns {string|undefined}
+ */
+function resolveReasoningEffort(config) {
+  if (config.reasoningEffort) return config.reasoningEffort;
+  if (/^gpt-5/i.test(config.chatModel || "")) return "none";
+  return undefined;
+}
+
+/**
  * Запускает цикл общения с моделью и вызова инструментов MCP.
  *
  * @param {object} params
@@ -51,14 +68,21 @@ function normalizeDateTimes(value, tz) {
  */
 async function runAgent({ openai, mcpClient, config, messages, onToolCall }) {
   const tools = mcpClient.getOpenAiTools();
+  const reasoningEffort = resolveReasoningEffort(config);
 
   for (let iteration = 0; iteration < config.maxToolIterations; iteration++) {
-    const completion = await openai.chat.completions.create({
+    const params = {
       model: config.chatModel,
       messages,
       tools,
       tool_choice: "auto",
-    });
+    };
+    // reasoning-модели (gpt-5.x) в /v1/chat/completions не допускают
+    // сочетание function tools с reasoning_effort != "none".
+    if (reasoningEffort) {
+      params.reasoning_effort = reasoningEffort;
+    }
+    const completion = await openai.chat.completions.create(params);
 
     const message = completion.choices[0].message;
     messages.push(message);

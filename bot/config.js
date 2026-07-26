@@ -40,6 +40,10 @@ const config = {
   openaiBaseUrl: process.env.OPENAI_BASE_URL || undefined,
   // Модель для диалога и вызова инструментов (function calling + vision)
   chatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
+  // reasoning_effort для reasoning-моделей (gpt-5.x и т.п.).
+  // Пусто = авто: для gpt-5.x подставляется "none", иначе параметр не отправляется.
+  // Важно: в /v1/chat/completions нельзя сочетать function tools с reasoning_effort != "none".
+  reasoningEffort: process.env.OPENAI_REASONING_EFFORT || undefined,
   // Модель для расшифровки голосовых сообщений
   transcriptionModel:
     process.env.OPENAI_TRANSCRIPTION_MODEL || "whisper-1",
