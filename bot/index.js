@@ -33,9 +33,10 @@ const mcpClientPool = new McpClientPool({
   baseUrl: config.singularityBaseUrl,
 });
 
-// История диалога по чатам (в памяти процесса)
+// История диалога по Telegram-пользователям (в памяти процесса).
+// Не используем chat ID: в группах он общий для нескольких пользователей.
 const histories = new Map();
-// Простая очередь обработки на чат, чтобы сообщения не пересекались
+// Простая очередь обработки на пользователя, чтобы его сообщения не пересекались.
 const chatLocks = new Map();
 
 function getHistory(chatId) {
@@ -110,7 +111,6 @@ async function downloadTelegramFile(ctx, fileId) {
  * и отправляет ответ агента.
  */
 async function handleUserContent(ctx, userContent) {
-  const chatId = ctx.chat.id;
   const userId = String(ctx.from.id);
   const profile = getUserProfile(ctx);
   if (!profile) {
@@ -118,7 +118,7 @@ async function handleUserContent(ctx, userContent) {
   }
   await ctx.sendChatAction("typing").catch(() => {});
 
-  const history = getHistory(chatId);
+  const history = getHistory(userId);
   const systemMessage = {
     role: "system",
     content: buildSystemPrompt({
@@ -155,7 +155,7 @@ async function handleUserContent(ctx, userContent) {
 
   // Сохраняем новую историю (без системного сообщения)
   const updated = trimHistory(messages.slice(1));
-  histories.set(chatId, updated);
+  histories.set(userId, updated);
 
   await replyLong(ctx, reply);
 }
@@ -187,14 +187,14 @@ function registerHandlers(bot) {
   });
 
   bot.command("reset", async (ctx) => {
-    histories.delete(ctx.chat.id);
+    histories.delete(String(ctx.from.id));
     await ctx.reply("Контекст диалога очищен.");
   });
 
   // Текстовые сообщения
   bot.on("text", async (ctx) => {
     if (ctx.message.text.startsWith("/")) return; // команды обрабатываются отдельно
-    await withChatLock(ctx.chat.id, async () => {
+    await withChatLock(String(ctx.from.id), async () => {
       try {
         await handleUserContent(ctx, ctx.message.text);
       } catch (err) {
@@ -206,7 +206,7 @@ function registerHandlers(bot) {
 
   // Голосовые сообщения и аудио
   const voiceHandler = async (ctx) => {
-    await withChatLock(ctx.chat.id, async () => {
+    await withChatLock(String(ctx.from.id), async () => {
       let tmpPath;
       try {
         await ctx.sendChatAction("typing").catch(() => {});
@@ -240,7 +240,7 @@ function registerHandlers(bot) {
 
   // Изображения (фото и картинки-документы)
   const photoHandler = async (ctx) => {
-    await withChatLock(ctx.chat.id, async () => {
+    await withChatLock(String(ctx.from.id), async () => {
       try {
         await ctx.sendChatAction("typing").catch(() => {});
         let fileId;
