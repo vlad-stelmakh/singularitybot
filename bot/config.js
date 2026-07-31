@@ -8,6 +8,10 @@
 require("dotenv").config();
 
 const path = require("path");
+const {
+  parseTelegramSingularityTokens,
+  createLegacyProfiles,
+} = require("./user-map");
 
 function parseUserIds(raw) {
   if (!raw) return [];
@@ -27,13 +31,29 @@ function required(name, value) {
   return value;
 }
 
+const allowedUserIds = parseUserIds(process.env.ALLOWED_USER_IDS);
+const legacyAccessToken = process.env.SINGULARITY_ACCESS_TOKEN;
+const userProfiles = parseTelegramSingularityTokens(
+  process.env.TELEGRAM_SINGULARITY_TOKENS
+);
+const effectiveUserProfiles =
+  userProfiles.size > 0
+    ? userProfiles
+    : createLegacyProfiles(allowedUserIds, legacyAccessToken);
+
+if (userProfiles.size > 0 && allowedUserIds.length > 0) {
+  console.warn(
+    "[warn] TELEGRAM_SINGULARITY_TOKENS задана: ALLOWED_USER_IDS и SINGULARITY_ACCESS_TOKEN игнорируются."
+  );
+}
+
 const config = {
   // Telegram
   telegramBotToken: required("TELEGRAM_BOT_TOKEN", process.env.TELEGRAM_BOT_TOKEN),
 
-  // Список ID пользователей, которым разрешён доступ (владелец).
-  // Пустой список означает "запрещено всем" — доступ нужно явно разрешить.
-  allowedUserIds: parseUserIds(process.env.ALLOWED_USER_IDS),
+  // Telegram ID -> ключ Singularity API. Ключи этого объекта одновременно
+  // служат явным списком пользователей, которым разрешён доступ.
+  userProfiles: effectiveUserProfiles,
 
   // OpenAI
   openaiApiKey: required("OPENAI_API_KEY", process.env.OPENAI_API_KEY),
@@ -51,9 +71,6 @@ const config = {
   // Singularity API / MCP
   singularityBaseUrl:
     process.env.SINGULARITY_BASE_URL || "https://api.singularity-app.com",
-  singularityAccessToken:
-    process.env.SINGULARITY_ACCESS_TOKEN ||
-    "910d5012-6c09-4190-85c3-692caf92575f",
   // Путь до запускаемого MCP-сервера (по умолчанию mcp.js в корне репозитория)
   mcpEntryPoint:
     process.env.MCP_ENTRY_POINT || path.join(__dirname, "..", "mcp.js"),

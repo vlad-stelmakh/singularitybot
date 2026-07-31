@@ -10,7 +10,8 @@
     "start": "node mcp.js",
     "mcp": "node mcp.js",
     "http-server": "node http-server.js",
-    "bot": "node bot/index.js"
+    "bot": "node bot/index.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.2",

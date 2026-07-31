@@ -18,7 +18,7 @@ const { Telegraf } = require("telegraf");
 const { OpenAI } = require("openai");
 
 const { config } = require("./config");
-const { SingularityMcpClient } = require("./mcp-client");
+const { McpClientPool } = require("./mcp-client-pool");
 const { buildSystemPrompt } = require("./prompt");
 const { runAgent, transcribeAudio } = require("./agent");
 const { toTelegramHtml, stripMarkdown, splitIntoChunks } = require("./format");
@@ -28,10 +28,9 @@ const openai = new OpenAI({
   baseURL: config.openaiBaseUrl,
 });
 
-const mcpClient = new SingularityMcpClient({
+const mcpClientPool = new McpClientPool({
   entryPoint: config.mcpEntryPoint,
   baseUrl: config.singularityBaseUrl,
-  accessToken: config.singularityAccessToken,
 });
 
 // История диалога по чатам (в памяти процесса)
@@ -44,9 +43,9 @@ function getHistory(chatId) {
   return histories.get(chatId);
 }
 
-function isOwner(ctx) {
+function getUserProfile(ctx) {
   const userId = ctx.from && String(ctx.from.id);
-  return userId && config.allowedUserIds.includes(userId);
+  return userId ? config.userProfiles.get(userId) : undefined;
 }
 
 /**
@@ -112,6 +111,11 @@ async function downloadTelegramFile(ctx, fileId) {
  */
 async function handleUserContent(ctx, userContent) {
   const chatId = ctx.chat.id;
+  const userId = String(ctx.from.id);
+  const profile = getUserProfile(ctx);
+  if (!profile) {
+    throw new Error("Доступ к SingularityApp для этого пользователя не настроен.");
+  }
   await ctx.sendChatAction("typing").catch(() => {});
 
   const history = getHistory(chatId);
@@ -132,13 +136,17 @@ async function handleUserContent(ctx, userContent) {
 
   let reply;
   try {
+    const mcpClient = await mcpClientPool.getClient(
+      userId,
+      profile.accessToken
+    );
     reply = await runAgent({
       openai,
       mcpClient,
       config,
       messages,
       onToolCall: (name) => {
-        console.log(`[agent] tool call: ${name}`);
+        console.log(`[agent] user=${userId} tool call: ${name}`);
       },
     });
   } finally {
@@ -155,7 +163,7 @@ async function handleUserContent(ctx, userContent) {
 function registerHandlers(bot) {
   // Проверка владельца для всех апдейтов
   bot.use(async (ctx, next) => {
-    if (!isOwner(ctx)) {
+    if (!getUserProfile(ctx)) {
       const uid = ctx.from ? ctx.from.id : "неизвестно";
       if (ctx.reply) {
         await ctx
@@ -275,27 +283,23 @@ function registerHandlers(bot) {
 }
 
 async function main() {
-  if (config.allowedUserIds.length === 0) {
+  if (config.userProfiles.size === 0) {
     console.warn(
-      "[warn] ALLOWED_USER_IDS пуст — доступ будет запрещён всем. Укажите ваш Telegram ID."
+      "[warn] TELEGRAM_SINGULARITY_TOKENS пуст — доступ будет запрещён всем. Настройте соответствие Telegram ID и ключа Singularity API."
     );
   }
-
-  console.log("Подключение к MCP-серверу Singularity...");
-  const tools = await mcpClient.connect();
-  console.log(`Загружено инструментов MCP: ${tools.length}`);
 
   const bot = new Telegraf(config.telegramBotToken);
   registerHandlers(bot);
 
   process.once("SIGINT", async () => {
     bot.stop("SIGINT");
-    await mcpClient.close();
+    await mcpClientPool.close();
     process.exit(0);
   });
   process.once("SIGTERM", async () => {
     bot.stop("SIGTERM");
-    await mcpClient.close();
+    await mcpClientPool.close();
     process.exit(0);
   });
 
@@ -305,7 +309,7 @@ async function main() {
     console.error("Ошибка при работе бота:", err);
     process.exit(1);
   });
-  console.log("Бот запущен. Ожидаю сообщения владельца.");
+  console.log("Бот запущен. MCP-подключения создаются при первом сообщении пользователя.");
 }
 
 if (require.main === module) {
