@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ApiClient = void 0;
+exports.ApiClient = exports.normalizeTaskSchedule = void 0;
 /**
  * API client for Singularity API
  */
@@ -24,6 +24,19 @@ function toUtcIso(value) {
     const d = new Date(value);
     return Number.isNaN(d.getTime()) ? value : d.toISOString();
 }
+/**
+ * API v2 отклоняет date-only значение `start`, даже когда useTime выключен.
+ * Полночь UTC сохраняет календарную дату для API и подходит прямым MCP-клиентам.
+ * Бот заранее добавляет часовое смещение владельца, поэтому его значения здесь
+ * не меняются.
+ */
+function normalizeTaskSchedule(task) {
+    if (task?.useTime !== false || typeof task.start !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(task.start)) {
+        return task;
+    }
+    return { ...task, start: `${task.start}T00:00:00.000Z` };
+}
+exports.normalizeTaskSchedule = normalizeTaskSchedule;
 class ApiClient {
     /**
      * Creates a new API client
@@ -299,7 +312,7 @@ class ApiClient {
      * @returns Created task
      */
     async createTask(task) {
-        const response = await this.client.post('/v2/task', task, this.createRequestConfig());
+        const response = await this.client.post('/v2/task', normalizeTaskSchedule(task), this.createRequestConfig());
         return response.data;
     }
     /**
@@ -309,7 +322,7 @@ class ApiClient {
      */
     async updateTask(task) {
         const { id, ...updateData } = task;
-        const response = await this.client.patch(`/v2/task/${id}`, updateData, this.createRequestConfig());
+        const response = await this.client.patch(`/v2/task/${id}`, normalizeTaskSchedule(updateData), this.createRequestConfig());
         return response.data;
     }
     /**
