@@ -11,6 +11,7 @@
     "mcp": "node mcp.js",
     "http-server": "node http-server.js",
     "bot": "node bot/index.js",
+    "migrate-legacy-env": "node scripts/migrate-legacy-env.js",
     "test": "node --test"
   },
   "dependencies": {

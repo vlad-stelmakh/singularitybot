@@ -37,12 +37,19 @@
 
    ```dotenv
    TELEGRAM_BOT_TOKEN=...
-   ALLOWED_USER_IDS=123456789
+   TELEGRAM_SINGULARITY_TOKENS=123456789:singularity-api-key
    OPENAI_API_KEY=...
-   SINGULARITY_ACCESS_TOKEN=...
    ```
 
-   `ALLOWED_USER_IDS` — список разрешённых Telegram ID через запятую. Бот откажет в доступе всем остальным пользователям.
+   `TELEGRAM_SINGULARITY_TOKENS` связывает Telegram ID с ключом Singularity API. Бот откажет в доступе всем пользователям, которых нет в этой переменной. Для нескольких пользователей используйте формат `telegramId:apiKey,telegramId:apiKey`.
+
+   Если есть старая конфигурация с `ALLOWED_USER_IDS` и общим `SINGULARITY_ACCESS_TOKEN`, создайте мигрированный файл:
+
+   ```bash
+   npm run migrate-legacy-env -- .env .env.migrated
+   ```
+
+   Проверьте `.env.migrated`, затем замените им `.env`.
 
 4. Запустите бота:
 
@@ -59,6 +66,7 @@
 | `npm run bot` | Запускает Telegram-бота. |
 | `npm run mcp` | Запускает MCP-сервер по stdio для подключения из MCP-клиента. |
 | `npm run http-server` | Запускает необязательный HTTP-сервер. |
+| `npm run migrate-legacy-env -- [исходный-файл] [новый-файл]` | Мигрирует `ALLOWED_USER_IDS` и `SINGULARITY_ACCESS_TOKEN` в `TELEGRAM_SINGULARITY_TOKENS`. По умолчанию использует `.env` и создаёт `.env.migrated`. |
 
 MCP-сервер предназначен для MCP-клиента, а не для ручного ввода в терминале. При прямом подключении передайте токен аргументом:
 
