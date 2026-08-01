@@ -4,6 +4,23 @@ exports.formatToolResponse = formatToolResponse;
 exports.success = success;
 exports.error = error;
 exports.checkForErrors = checkForErrors;
+function getApiErrorMessage(error) {
+    const data = error?.response?.data;
+    if (!data)
+        return undefined;
+    if (typeof data === 'string')
+        return data;
+    if (Array.isArray(data.message))
+        return data.message.join('; ');
+    if (typeof data.message === 'string')
+        return data.message;
+    try {
+        return JSON.stringify(data);
+    }
+    catch {
+        return undefined;
+    }
+}
 /**
  * Formats response content for MCP tools
  * @param content - Content to be returned
@@ -60,7 +77,7 @@ function error(error) {
         errorMessage = error;
     }
     else if (error instanceof Error) {
-        errorMessage = error.message;
+        errorMessage = getApiErrorMessage(error) || error.message;
     }
     else {
         errorMessage = `Error ${error.code}: ${error.message}`;

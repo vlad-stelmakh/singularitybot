@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.assertRecurrenceIsNotSupported = assertRecurrenceIsNotSupported;
 exports.registerTaskResources = registerTaskResources;
 exports.registerTaskTools = registerTaskTools;
 /**
@@ -8,6 +9,11 @@ exports.registerTaskTools = registerTaskTools;
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
 const zod_1 = require("zod");
 const response_1 = require("../utils/response");
+function assertRecurrenceIsNotSupported(task) {
+    if (task.recurrence !== undefined) {
+        throw new Error("Повторяющиеся задачи нельзя создать или изменить через Singularity API v2. Создайте отдельные обычные задачи.");
+    }
+}
 /**
  * Registers task resources with MCP server
  * @param server - MCP server instance
@@ -122,6 +128,7 @@ function registerTaskTools(server, apiClient) {
         },
     }, async ({ task }) => {
         try {
+            assertRecurrenceIsNotSupported(task);
             const result = await apiClient.createTask(task);
             return (0, response_1.success)(result);
         }
@@ -167,6 +174,7 @@ function registerTaskTools(server, apiClient) {
         },
     }, async ({ task }) => {
         try {
+            assertRecurrenceIsNotSupported(task);
             const result = await apiClient.updateTask(task);
             return (0, response_1.success)(result);
         }
