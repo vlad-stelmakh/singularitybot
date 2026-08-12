@@ -7,7 +7,8 @@
  *  - доступ только для владельца (по Telegram user ID);
  *  - текстовые сообщения, голосовые (расшифровка через OpenAI) и изображения (vision);
  *  - агент задаёт уточняющие вопросы, если данных не хватает;
- *  - работа с Singularity через MCP-сервер, добавленный в репозиторий.
+ *  - работа с Singularity через MCP-сервер, добавленный в репозиторий;
+ *  - опционально — обзор рабочих задач в Jira (спринт, фокус), если заданы JIRA_*.
  */
 
 const os = require("os");
@@ -31,6 +32,7 @@ const openai = new OpenAI({
 const mcpClientPool = new McpClientPool({
   entryPoint: config.mcpEntryPoint,
   baseUrl: config.singularityBaseUrl,
+  jira: config.jira,
 });
 
 // История диалога по Telegram-пользователям (в памяти процесса).
@@ -124,6 +126,7 @@ async function handleUserContent(ctx, userContent) {
     content: buildSystemPrompt({
       timezone: config.ownerTimezone,
       now: new Date(),
+      jira: config.jira,
     }),
   };
 
@@ -178,9 +181,13 @@ function registerHandlers(bot) {
   });
 
   bot.start(async (ctx) => {
+    const jiraHint = config.jira
+      ? "\n\nМогу посмотреть рабочие задачи в Jira: что в текущем спринте и на чём сфокусироваться."
+      : "";
     await ctx.reply(
-      "Привет! Я помогу создавать и вести задачи, проекты, заметки и привычки в SingularityApp.\n\n" +
-        "Пиши текстом, присылай голосовые или картинки (например, список дел). " +
+      "Привет! Я помогу создавать и вести задачи, проекты, заметки и привычки в SingularityApp." +
+        jiraHint +
+        "\n\nПиши текстом, присылай голосовые или картинки (например, список дел). " +
         "Если чего-то не пойму — переспрошу.\n\n" +
         "Команды:\n/reset — очистить контекст диалога"
     );
@@ -309,6 +316,19 @@ async function main() {
     console.error("Ошибка при работе бота:", err);
     process.exit(1);
   });
+  if (config.jira) {
+    const extras = [
+      config.jira.projectKey && `проект ${config.jira.projectKey}`,
+      config.jira.boardId && `доска ${config.jira.boardId}`,
+    ].filter(Boolean);
+    console.log(
+      `Jira MCP включён: ${config.jira.baseUrl}` +
+        (extras.length ? ` (${extras.join(", ")})` : "") +
+        ". Подключение при первом сообщении."
+    );
+  } else {
+    console.log("Jira MCP выключен (не заданы JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN).");
+  }
   console.log("Бот запущен. MCP-подключения создаются при первом сообщении пользователя.");
 }
 
