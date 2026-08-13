@@ -10,7 +10,8 @@
 
 - Telegram-бот — основной интерфейс: принимает текст, голосовые сообщения, аудио и изображения.
 - OpenAI — расшифровывает голосовые сообщения, понимает изображения и ведёт диалог.
-- MCP-сервер — предоставляет агенту инструменты для работы с API SingularityApp по протоколу Model Context Protocol.
+- MCP-сервер Singularity — предоставляет агенту инструменты для работы с API SingularityApp по протоколу Model Context Protocol.
+- MCP-сервер Jira — необязательный read-only доступ к рабочим задачам (спринт, JQL, карточка).
 - HTTP-сервер — необязательный сервис с endpoint'ом проверки состояния.
 
 ## Требования
@@ -43,6 +44,16 @@
 
    `TELEGRAM_SINGULARITY_TOKENS` связывает Telegram ID с ключом Singularity API. Бот откажет в доступе всем пользователям, которых нет в этой переменной. Для нескольких пользователей используйте формат `telegramId:apiKey,telegramId:apiKey`.
 
+   Чтобы бот ещё и смотрел рабочие задачи в Jira (что в спринте, на чём сфокусироваться), добавьте в `.env`:
+
+   ```dotenv
+   JIRA_BASE_URL=https://your-domain.atlassian.net
+   JIRA_EMAIL=you@example.com
+   JIRA_API_TOKEN=...
+   ```
+
+   API-токен создаётся в [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens). Без этих трёх переменных Jira просто не подключается — остальное работает как раньше. По желанию можно задать `JIRA_PROJECT_KEY` и `JIRA_BOARD_ID`, чтобы не искать проект и доску каждый раз.
+
    Если есть старая конфигурация с `ALLOWED_USER_IDS` и общим `SINGULARITY_ACCESS_TOKEN`, создайте мигрированный файл:
 
    ```bash
@@ -57,21 +68,39 @@
    npm run bot
    ```
 
-Бот самостоятельно запускает MCP-сервер как дочерний процесс; отдельно запускать его для работы бота не нужно.
+Бот самостоятельно запускает MCP-сервер Singularity как дочерний процесс; отдельно запускать его для работы бота не нужно. Если заданы переменные Jira, бот так же поднимает `jira-mcp.js`.
 
 ## Команды
 
 | Команда | Назначение |
 | --- | --- |
 | `npm run bot` | Запускает Telegram-бота. |
-| `npm run mcp` | Запускает MCP-сервер по stdio для подключения из MCP-клиента. |
+| `npm run mcp` | Запускает MCP-сервер Singularity по stdio для подключения из MCP-клиента. |
+| `npm run jira-mcp` | Запускает read-only MCP-сервер Jira по stdio. |
 | `npm run http-server` | Запускает необязательный HTTP-сервер. |
 | `npm run migrate-legacy-env -- [исходный-файл] [новый-файл]` | Мигрирует `ALLOWED_USER_IDS` и `SINGULARITY_ACCESS_TOKEN` в `TELEGRAM_SINGULARITY_TOKENS`. По умолчанию использует `.env` и создаёт `.env.migrated`. |
+| `npm test` | Запускает тесты. |
 
 MCP-сервер предназначен для MCP-клиента, а не для ручного ввода в терминале. При прямом подключении передайте токен аргументом:
 
 ```bash
 node mcp.js --accessToken "$SINGULARITY_ACCESS_TOKEN" -n
+```
+
+## Jira (необязательно)
+
+Если в `.env` заданы `JIRA_BASE_URL`, `JIRA_EMAIL` и `JIRA_API_TOKEN`, бот подключает read-only MCP к Jira Cloud. Можно спросить, например:
+
+- «Что у меня в текущем спринте?»
+- «На чём важно сфокусироваться сегодня?»
+- «Что с PROJ-123?»
+
+Без этих переменных интеграция выключена, бот работает только с SingularityApp. Если Jira не подключится (неверный токен, нет сети), бот продолжит отвечать по Singularity и напишет предупреждение в лог.
+
+Для прямого запуска Jira MCP из другого клиента:
+
+```bash
+node jira-mcp.js --baseUrl "$JIRA_BASE_URL" --email "$JIRA_EMAIL" --apiToken "$JIRA_API_TOKEN" -n
 ```
 
 ## HTTP-сервер
@@ -90,6 +119,7 @@ DEMO_MODE=true npm run http-server
 
 - модель для диалога и модель расшифровки;
 - URL API SingularityApp и OpenAI;
+- опциональное подключение к Jira Cloud;
 - часовой пояс владельца;
 - максимальную длину истории диалога и число итераций инструментов.
 

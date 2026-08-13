@@ -12,6 +12,7 @@ const {
   parseTelegramSingularityTokens,
   createLegacyProfiles,
 } = require("./user-map");
+const { parseJiraConfig } = require("../jira/config");
 
 function parseUserIds(raw) {
   if (!raw) return [];
@@ -47,6 +48,13 @@ if (userProfiles.size > 0 && allowedUserIds.length > 0) {
   );
 }
 
+const jira = parseJiraConfig(process.env);
+if (jira.incomplete) {
+  console.warn(
+    `[warn] Jira MCP не включён: не заданы ${jira.missing.join(", ")}. Задайте их в .env или уберите частичные JIRA_* переменные.`
+  );
+}
+
 const config = {
   // Telegram
   telegramBotToken: required("TELEGRAM_BOT_TOKEN", process.env.TELEGRAM_BOT_TOKEN),
@@ -74,6 +82,20 @@ const config = {
   // Путь до запускаемого MCP-сервера (по умолчанию mcp.js в корне репозитория)
   mcpEntryPoint:
     process.env.MCP_ENTRY_POINT || path.join(__dirname, "..", "mcp.js"),
+
+  // Опциональный Jira MCP (только чтение). null, если не настроен.
+  jira: jira.enabled
+    ? {
+        enabled: true,
+        baseUrl: jira.baseUrl,
+        email: jira.email,
+        apiToken: jira.apiToken,
+        projectKey: jira.projectKey,
+        boardId: jira.boardId,
+        entryPoint:
+          jira.entryPoint || path.join(__dirname, "..", "jira-mcp.js"),
+      }
+    : null,
 
   // Часовой пояс владельца (используется агентом при расстановке дат/времени задач)
   ownerTimezone: process.env.OWNER_TIMEZONE || "+03:00",

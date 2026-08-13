@@ -21,8 +21,8 @@ RUN chown -R node:node /app
 USER node
 
 # tini как init: пробрасывает сигналы и жнёт зомби-процессы
-# (бот порождает mcp.js дочерним процессом по stdio).
+# (бот порождает mcp.js и опционально jira-mcp.js по stdio).
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Долгоживущий процесс — Telegram-бот. Он сам запускает mcp.js.
+# Долгоживущий процесс — Telegram-бот. Он сам запускает MCP-серверы.
 CMD ["node", "bot/index.js"]
