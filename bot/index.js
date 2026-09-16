@@ -7,7 +7,7 @@
  *  - доступ только для владельца (по Telegram user ID);
  *  - текстовые сообщения, голосовые (расшифровка через OpenAI) и изображения (vision);
  *  - агент задаёт уточняющие вопросы, если данных не хватает;
- *  - работа с Singularity через MCP-сервер, добавленный в репозиторий;
+ *  - работа с Singularity через официальный MCP (https://mcp.singularity-app.com/mcp);
  *  - опционально — обзор рабочих задач в Jira (спринт, фокус), если заданы JIRA_*.
  */
 
@@ -23,6 +23,7 @@ const { McpClientPool } = require("./mcp-client-pool");
 const { buildSystemPrompt } = require("./prompt");
 const { runAgent, transcribeAudio } = require("./agent");
 const { toTelegramHtml, stripMarkdown, splitIntoChunks } = require("./format");
+const { fetchTodayMessage } = require("./today");
 
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
@@ -32,6 +33,10 @@ const openai = new OpenAI({
 const mcpClientPool = new McpClientPool({
   entryPoint: config.mcpEntryPoint,
   baseUrl: config.singularityBaseUrl,
+  mcpUrl: config.singularityMcpUrl,
+  mcpTransport: config.singularityMcpTransport,
+  mcpToolsets: config.singularityMcpToolsets,
+  mcpFallbackToStdio: config.singularityMcpFallbackToStdio,
   jira: config.jira,
 });
 
@@ -189,13 +194,38 @@ function registerHandlers(bot) {
         jiraHint +
         "\n\nПиши текстом, присылай голосовые или картинки (например, список дел). " +
         "Если чего-то не пойму — переспрошу.\n\n" +
-        "Команды:\n/reset — очистить контекст диалога"
+        "Команды:\n/today — задачи на сегодня\n/reset — очистить контекст диалога"
     );
   });
 
   bot.command("reset", async (ctx) => {
     histories.delete(String(ctx.from.id));
     await ctx.reply("Контекст диалога очищен.");
+  });
+
+  bot.command("today", async (ctx) => {
+    await withChatLock(String(ctx.from.id), async () => {
+      try {
+        await ctx.sendChatAction("typing").catch(() => {});
+        const userId = String(ctx.from.id);
+        const profile = getUserProfile(ctx);
+        const mcpClient = await mcpClientPool.getSingularityClient(
+          userId,
+          profile.accessToken
+        );
+        const message = await fetchTodayMessage({
+          mcpClient,
+          timezone: config.ownerTimezone,
+          now: new Date(),
+        });
+        await replyLong(ctx, message);
+      } catch (err) {
+        console.error("Ошибка команды /today:", err);
+        await ctx
+          .reply(`Не удалось получить задачи на сегодня: ${err.message}`)
+          .catch(() => {});
+      }
+    });
   });
 
   // Текстовые сообщения
@@ -298,6 +328,16 @@ async function main() {
 
   const bot = new Telegraf(config.telegramBotToken);
   registerHandlers(bot);
+  await bot.telegram
+    .setMyCommands([
+      { command: "today", description: "Задачи на сегодня" },
+      { command: "reset", description: "Очистить контекст диалога" },
+    ])
+    .catch((err) => {
+      console.warn(
+        `[warn] Не удалось обновить меню команд Telegram: ${err.message}`
+      );
+    });
 
   process.once("SIGINT", async () => {
     bot.stop("SIGINT");
@@ -329,6 +369,14 @@ async function main() {
   } else {
     console.log("Jira MCP выключен (не заданы JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN).");
   }
+  const transportLabel =
+    config.singularityMcpTransport === "stdio"
+      ? `локальный stdio (${config.mcpEntryPoint})`
+      : `официальный HTTP ${config.singularityMcpUrl}` +
+        (config.singularityMcpFallbackToStdio
+          ? " (fallback: mcp.js)"
+          : "");
+  console.log(`Singularity MCP: ${transportLabel}`);
   console.log("Бот запущен. MCP-подключения создаются при первом сообщении пользователя.");
 }
 

@@ -132,3 +132,72 @@ test("если Jira не подключается, бот продолжает �
     console.warn = originalWarn;
   }
 });
+
+test("по умолчанию ходит в официальный HTTP MCP", async () => {
+  const created = [];
+  const pool = new McpClientPool({
+    mcpUrl: "https://mcp.singularity-app.com/mcp",
+    mcpTransport: "http",
+    createClient: (options) => {
+      created.push(options);
+      return { connect: async () => {}, close: async () => {} };
+    },
+  });
+
+  await pool.getClient("111", "token-a");
+  assert.equal(created[0].transport, "http");
+  assert.equal(created[0].url, "https://mcp.singularity-app.com/mcp");
+  assert.equal(created[0].accessToken, "token-a");
+});
+
+test("если официальный MCP недоступен, откативается на stdio mcp.js", async () => {
+  const pool = new McpClientPool({
+    mcpTransport: "http",
+    mcpFallbackToStdio: true,
+    entryPoint: "/tmp/mcp.js",
+    createClient: () => ({
+      connect: async () => {
+        throw new Error("Unauthorized");
+      },
+      close: async () => {},
+    }),
+    createStdioClient: (options) => ({
+      options,
+      connect: async () => {},
+      close: async () => {},
+      getOpenAiTools: () => [
+        { type: "function", function: { name: "listTasks", parameters: {} } },
+      ],
+    }),
+  });
+
+  const warn = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => warn.push(args.join(" "));
+  try {
+    const client = await pool.getClient("111", "token-a");
+    assert.equal(client.getOpenAiTools()[0].function.name, "listTasks");
+    assert.equal(client.options.transport, "stdio");
+    assert.match(warn.join("\n"), /Переключаюсь на встроенный mcp\.js/);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test("без fallback пробрасывает ошибку официального MCP", async () => {
+  const pool = new McpClientPool({
+    mcpTransport: "http",
+    mcpFallbackToStdio: false,
+    createClient: () => ({
+      connect: async () => {
+        throw new Error("Unauthorized");
+      },
+      close: async () => {},
+    }),
+  });
+
+  await assert.rejects(
+    () => pool.getClient("111", "token-a"),
+    /Unauthorized/
+  );
+});

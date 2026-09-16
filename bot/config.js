@@ -13,6 +13,12 @@ const {
   createLegacyProfiles,
 } = require("./user-map");
 const { parseJiraConfig } = require("../jira/config");
+const {
+  DEFAULT_SINGULARITY_MCP_URL,
+  buildOfficialMcpUrl,
+  parseMcpTransport,
+  parseBooleanEnv,
+} = require("./http-mcp-client");
 
 function parseUserIds(raw) {
   if (!raw) return [];
@@ -79,7 +85,21 @@ const config = {
   // Singularity API / MCP
   singularityBaseUrl:
     process.env.SINGULARITY_BASE_URL || "https://api.singularity-app.com",
-  // Путь до запускаемого MCP-сервера (по умолчанию mcp.js в корне репозитория)
+  // Официальный hosted MCP (Streamable HTTP)
+  singularityMcpUrl: buildOfficialMcpUrl(
+    process.env.SINGULARITY_MCP_URL || DEFAULT_SINGULARITY_MCP_URL,
+    process.env.SINGULARITY_MCP_TOOLSETS
+  ),
+  singularityMcpTransport: parseMcpTransport(
+    process.env.SINGULARITY_MCP_TRANSPORT
+  ),
+  singularityMcpToolsets: (process.env.SINGULARITY_MCP_TOOLSETS || "").trim(),
+  // Если официальный MCP отклоняет API-токен (нужен OAuth) — откатиться на mcp.js
+  singularityMcpFallbackToStdio: parseBooleanEnv(
+    process.env.SINGULARITY_MCP_FALLBACK,
+    true
+  ),
+  // Путь до запасного MCP-сервера по stdio (по умолчанию mcp.js в корне репозитория)
   mcpEntryPoint:
     process.env.MCP_ENTRY_POINT || path.join(__dirname, "..", "mcp.js"),
 
