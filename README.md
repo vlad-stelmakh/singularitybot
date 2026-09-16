@@ -54,13 +54,13 @@
 
    API-токен создаётся в [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens). Без этих трёх переменных Jira просто не подключается — остальное работает как раньше. По желанию можно задать `JIRA_PROJECT_KEY` и `JIRA_BOARD_ID`, чтобы не искать проект и доску каждый раз.
 
-   Если есть старая конфигурация с `ALLOWED_USER_IDS` и общим `SINGULARITY_ACCESS_TOKEN`, создайте мигрированный файл:
+   Если есть старая конфигурация с `ALLOWED_USER_IDS` и общим `SINGULARITY_ACCESS_TOKEN`, создайте мигрированный файл **на хосте** (не через `docker exec` — `.env` в контейнере нет):
 
    ```bash
    npm run migrate-legacy-env -- .env .env.migrated
    ```
 
-   Проверьте `.env.migrated`, затем замените им `.env`.
+   Проверьте `.env.migrated`, затем замените им `.env`. Если бот уже запущен в Docker, после замены пересоздайте контейнер: `docker compose up -d --force-recreate`.
 
 4. Запустите бота:
 

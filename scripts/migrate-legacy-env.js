@@ -80,6 +80,13 @@ function migrateFile(sourcePath, destinationPath) {
   if (fs.existsSync(destinationPath)) {
     throw new Error(`Файл назначения уже существует: ${destinationPath}`);
   }
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error(
+      `Файл не найден: ${path.resolve(sourcePath)}. ` +
+        "Запускайте миграцию на хосте в каталоге с .env, а не через docker exec: " +
+        "файл .env не копируется в образ и не монтируется в контейнер (compose передаёт только переменные через env_file)."
+    );
+  }
 
   const migratedContent = migrateEnvContent(fs.readFileSync(sourcePath, "utf8"));
   fs.writeFileSync(destinationPath, migratedContent, "utf8");

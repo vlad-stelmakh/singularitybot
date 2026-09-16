@@ -2,8 +2,11 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const dotenv = require("dotenv");
-const { migrateEnvContent } = require("../scripts/migrate-legacy-env");
+const { migrateEnvContent, migrateFile } = require("../scripts/migrate-legacy-env");
 
 test("переносит общий legacy-токен для каждого Telegram ID", () => {
   const result = migrateEnvContent(
@@ -43,5 +46,15 @@ test("проверяет обязательные legacy-параметры и �
   assert.throws(
     () => migrateEnvContent("ALLOWED_USER_IDS=123456\n"),
     /SINGULARITY_ACCESS_TOKEN/
+  );
+});
+
+test("объясняет, что исходный .env нужно читать на хосте", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "migrate-env-"));
+  const missing = path.join(dir, ".env");
+  const dest = path.join(dir, ".env.migrated");
+  assert.throws(
+    () => migrateFile(missing, dest),
+    /не через docker exec/
   );
 });
