@@ -1,6 +1,6 @@
 # Развёртывание Telegram-бота на VPS (Docker)
 
-Бот работает по long-polling — это долгоживущий процесс, а не веб-сервис. Порт наружу открывать не нужно, нужен только исходящий доступ в интернет к `api.telegram.org`, `api.openai.com`, `api.singularity-app.com` и, если включён Jira MCP, к вашему сайту Jira Cloud (`*.atlassian.net`).
+Бот работает по long-polling — это долгоживущий процесс, а не веб-сервис. Порт наружу открывать не нужно, нужен только исходящий доступ в интернет к `api.telegram.org`, `api.openai.com`, `api.singularity-app.com`, `mcp.singularity-app.com` и, если включён Jira MCP, к вашему сайту Jira Cloud (`*.atlassian.net`).
 
 ## Предпосылки
 
@@ -48,6 +48,6 @@ docker run -d --name singularity-bot --restart unless-stopped \
 
 ## Заметки
 
-- Отдельный MCP-сервер запускать не нужно: бот сам порождает `mcp.js` как дочерний процесс по stdio (в контейнере это работает — при старте видно `Загружено инструментов MCP: N`). Если в `.env` заданы `JIRA_BASE_URL`, `JIRA_EMAIL` и `JIRA_API_TOKEN`, бот так же поднимает `jira-mcp.js`.
+- Отдельный MCP-сервер запускать не нужно: бот подключается к официальному `https://mcp.singularity-app.com/mcp`. Если hosted MCP отклонит API-токен, бот порождает `mcp.js` как дочерний процесс по stdio. Если в `.env` заданы `JIRA_BASE_URL`, `JIRA_EMAIL` и `JIRA_API_TOKEN`, бот так же поднимает `jira-mcp.js`.
 - Сборки/транспиляции нет: `node` запускает файлы напрямую.
 - `.env` не попадает в образ (исключён в `.dockerignore`) и подключается на рантайме через `env_file`.
