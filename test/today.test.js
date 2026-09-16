@@ -65,6 +65,36 @@ test("отбирает задачи на календарный день и пр
   );
 });
 
+test("задачи без конкретного времени идут раньше интервалов со временем", () => {
+  const bounds = getDayBounds(new Date("2026-09-16T10:00:00.000Z"), "+03:00");
+  const selected = selectTodayTasks(
+    [
+      { title: "В 13:00", start: "2026-09-16T10:00:00.000Z", useTime: true },
+      { title: "Весь день", start: "2026-09-16T20:00:00.000Z", useTime: false },
+    ],
+    bounds
+  );
+  assert.deepEqual(
+    selected.map((task) => task.title),
+    ["Весь день", "В 13:00"]
+  );
+});
+
+test("сортирует по фактическому времени, а не по строке ISO", () => {
+  const bounds = getDayBounds(new Date("2026-09-16T10:00:00.000Z"), "+03:00");
+  const selected = selectTodayTasks(
+    [
+      { title: "Позже UTC", start: "2026-09-16T10:00:00.000Z" },
+      { title: "Раньше +04", start: "2026-09-16T11:00:00+04:00" },
+    ],
+    bounds
+  );
+  assert.deepEqual(
+    selected.map((task) => task.title),
+    ["Раньше +04", "Позже UTC"]
+  );
+});
+
 test("форматирует пустой и непустой список", () => {
   const bounds = getDayBounds(new Date("2026-09-16T10:00:00.000Z"), "+03:00");
   assert.match(
@@ -74,15 +104,18 @@ test("форматирует пустой и непустой список", () 
   const text = formatTodayMessage(
     [
       { title: "Daily", start: "2026-09-16T08:30:00.000Z" },
+      { title: "Весь день", start: "2026-09-16T20:00:00.000Z", useTime: false },
       { title: "Готово", start: "2026-09-16T07:00:00.000Z", complete: 1 },
     ],
     bounds
   );
   assert.match(text, /16 сентября 2026/);
   assert.match(text, /11:30 — Daily/);
+  assert.match(text, /• Весь день/);
+  assert.doesNotMatch(text, /23:00 — Весь день/);
   assert.match(text, /Готово \(1\)/);
   assert.match(text, /10:00 — Готово/);
-  assert.match(text, /Всего: 2/);
+  assert.match(text, /Всего: 3/);
 });
 
 test("находит инструмент списка задач и собирает аргументы", () => {

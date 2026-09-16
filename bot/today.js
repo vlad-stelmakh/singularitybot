@@ -114,6 +114,11 @@ function isNote(task) {
   return task.isNote === true || task.isNote === 1;
 }
 
+function startMs(task) {
+  const ms = Date.parse(task.start || "");
+  return Number.isNaN(ms) ? Number.POSITIVE_INFINITY : ms;
+}
+
 function selectTodayTasks(tasks, bounds) {
   return (tasks || [])
     .filter((task) => task && !isNote(task))
@@ -121,9 +126,10 @@ function selectTodayTasks(tasks, bounds) {
     .sort((a, b) => {
       const done = Number(isCompleted(a)) - Number(isCompleted(b));
       if (done !== 0) return done;
-      const startA = a.start || "";
-      const startB = b.start || "";
-      if (startA !== startB) return startA < startB ? -1 : 1;
+      const allDay = Number(a.useTime !== false) - Number(b.useTime !== false);
+      if (allDay !== 0) return allDay;
+      const delta = startMs(a) - startMs(b);
+      if (delta !== 0) return delta;
       return String(a.title || "").localeCompare(String(b.title || ""), "ru");
     });
 }
