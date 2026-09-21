@@ -213,12 +213,16 @@ async function fetchTodayMessage({ mcpClient, timezone, now = new Date() }) {
 }
 
 module.exports = {
+  MONTHS_GENITIVE,
+  TASK_LIST_TOOL_CANDIDATES,
   parseUtcOffsetMinutes,
   getDayBounds,
   calendarDate,
   formatClock,
   formatHumanDate,
   parseTaskList,
+  isCompleted,
+  isNote,
   selectTodayTasks,
   formatTodayMessage,
   findTaskListTool,

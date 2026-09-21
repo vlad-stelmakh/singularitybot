@@ -24,6 +24,7 @@ const { buildSystemPrompt } = require("./prompt");
 const { runAgent, transcribeAudio } = require("./agent");
 const { toTelegramHtml, stripMarkdown, splitIntoChunks } = require("./format");
 const { fetchTodayMessage } = require("./today");
+const { fetchWeekMessage } = require("./week");
 
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
@@ -194,7 +195,7 @@ function registerHandlers(bot) {
         jiraHint +
         "\n\nПиши текстом, присылай голосовые или картинки (например, список дел). " +
         "Если чего-то не пойму — переспрошу.\n\n" +
-        "Команды:\n/today — задачи на сегодня\n/reset — очистить контекст диалога"
+        "Команды:\n/today — задачи на сегодня\n/week — что сделано на прошлой неделе\n/reset — очистить контекст диалога"
     );
   });
 
@@ -223,6 +224,33 @@ function registerHandlers(bot) {
         console.error("Ошибка команды /today:", err);
         await ctx
           .reply(`Не удалось получить задачи на сегодня: ${err.message}`)
+          .catch(() => {});
+      }
+    });
+  });
+
+  bot.command("week", async (ctx) => {
+    await withChatLock(String(ctx.from.id), async () => {
+      try {
+        await ctx.sendChatAction("typing").catch(() => {});
+        const userId = String(ctx.from.id);
+        const profile = getUserProfile(ctx);
+        const mcpClient = await mcpClientPool.getSingularityClient(
+          userId,
+          profile.accessToken
+        );
+        const message = await fetchWeekMessage({
+          mcpClient,
+          timezone: config.ownerTimezone,
+          now: new Date(),
+        });
+        await replyLong(ctx, message);
+      } catch (err) {
+        console.error("Ошибка команды /week:", err);
+        await ctx
+          .reply(
+            `Не удалось получить закрытые задачи за прошлую неделю: ${err.message}`
+          )
           .catch(() => {});
       }
     });
@@ -331,6 +359,7 @@ async function main() {
   await bot.telegram
     .setMyCommands([
       { command: "today", description: "Задачи на сегодня" },
+      { command: "week", description: "Что сделано на прошлой неделе" },
       { command: "reset", description: "Очистить контекст диалога" },
     ])
     .catch((err) => {
