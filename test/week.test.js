@@ -80,7 +80,7 @@ test("склеивает даты по-русски", () => {
   );
 });
 
-test("берёт закрытые задачи из архива и по completeLast", () => {
+test("берёт закрытые задачи из архива, completeLast и отменённые (checked=2)", () => {
   const bounds = getLastWeekBounds(new Date("2026-09-21T10:00:00.000Z"), "+03:00");
   const selected = selectClosedWeekTasks(
     [
@@ -92,13 +92,19 @@ test("берёт закрытые задачи из архива и по complet
         completeLast: "2026-09-18T12:00:00.000Z",
         start: "2026-08-01T10:00:00.000Z",
       },
+      {
+        title: "Arch BNPL committee",
+        start: "2026-09-18T11:00:00.000Z",
+        checked: 2,
+        journalDate: "2026-09-18T20:00:01.000Z",
+      },
       { title: "Эта неделя", start: "2026-09-21T10:00:00.000Z", complete: 1 },
     ],
     bounds
   );
   assert.deepEqual(
     selected.map((task) => task.title),
-    ["Синк", "Инъекция"]
+    ["Синк", "Инъекция", "Arch BNPL committee"]
   );
 });
 
@@ -139,6 +145,20 @@ test("сворачивает повторяющиеся задачи и груп
   assert.match(text, /\*\*Личное и здоровье\*\*/);
   assert.match(text, /Collagen Powder — принять — 14 и 15 сентября/);
   assert.match(text, /Всего: 3/);
+  assert.ok(text.indexOf("**Работа**") < text.indexOf("**Личное и здоровье**"));
+});
+
+test("секция без проекта идёт последней", () => {
+  const bounds = getLastWeekBounds(new Date("2026-09-21T10:00:00.000Z"), "+03:00");
+  const text = formatWeekMessage(
+    [
+      { title: "Inbox", start: "2026-09-14T10:00:00.000Z", checked: 1 },
+      { title: "Работа", projectId: "work", start: "2026-09-15T10:00:00.000Z", checked: 1 },
+    ],
+    bounds,
+    [{ id: "work", title: "Tabby" }]
+  );
+  assert.ok(text.indexOf("**Tabby**") < text.indexOf("**Без проекта**"));
 });
 
 test("пустая неделя", () => {
@@ -187,7 +207,7 @@ test("находит инструмент списка проектов", () => 
   assert.equal(findProjectListTool({ tools: [] }), null);
 });
 
-test("fetchWeekMessage смотрит архив и при пустом ответе повторяет без дат", async () => {
+test("fetchWeekMessage смотрит архив и при пустом ответе расширяет окно дат", async () => {
   const bounds = getLastWeekBounds(new Date("2026-09-21T10:00:00.000Z"), "+03:00");
   const calls = [];
   const mcpClient = {
@@ -202,7 +222,7 @@ test("fetchWeekMessage смотрит архив и при пустом отве
           }),
         };
       }
-      if (args.startDateFrom) {
+      if (args.startDateFrom === bounds.startIso) {
         return { isError: false, text: JSON.stringify({ tasks: [] }) };
       }
       return {
@@ -235,7 +255,9 @@ test("fetchWeekMessage смотрит архив и при пустом отве
   assert.equal(calls[0].args.includeArchived, true);
   assert.equal(calls[0].args.includeAllRecurrenceInstances, true);
   assert.equal(calls[0].args.startDateFrom, bounds.startIso);
-  assert.equal(calls[1].args.startDateFrom, undefined);
+  const lookbackMs = Date.parse(bounds.startIso) - 90 * 24 * 60 * 60 * 1000;
+  assert.equal(calls[1].args.startDateFrom, new Date(lookbackMs).toISOString());
+  assert.equal(calls[1].args.startDateTo, bounds.endIso);
   assert.match(message, /Backend code review/);
   assert.match(message, /\*\*Работа\*\*/);
   assert.doesNotMatch(message, /Открытая/);

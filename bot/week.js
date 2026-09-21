@@ -135,14 +135,40 @@ function formatDateList(dateKeys) {
   );
 }
 
+/**
+ * Singularity: checked 0 — открыта, 1 — выполнена, 2 — отменена.
+ * И выполненные, и отменённые уходят в архив и считаются закрытыми.
+ */
 function isClosed(task) {
-  return isCompleted(task) || Boolean(task.completeLast);
+  const checked = Number(task.checked);
+  return (
+    isCompleted(task) ||
+    checked === 2 ||
+    Number(task.complete) === 2 ||
+    Boolean(task.completeLast) ||
+    Boolean(task.journalDate)
+  );
 }
 
-function taskActivityDate(task, offsetMinutes) {
-  const fromComplete = calendarDate(task.completeLast, offsetMinutes);
-  if (fromComplete) return fromComplete;
-  return calendarDate(task.start, offsetMinutes);
+function taskDateCandidates(task, offsetMinutes) {
+  return [
+    calendarDate(task.start, offsetMinutes),
+    calendarDate(task.completeLast, offsetMinutes),
+    calendarDate(task.journalDate, offsetMinutes),
+  ].filter(Boolean);
+}
+
+function taskActivityDate(task, offsetMinutes, bounds) {
+  const candidates = [
+    calendarDate(task.start, offsetMinutes),
+    calendarDate(task.completeLast, offsetMinutes),
+    calendarDate(task.journalDate, offsetMinutes),
+  ].filter(Boolean);
+  if (bounds) {
+    const inWeek = candidates.find((dateKey) => dateInWeek(dateKey, bounds));
+    if (inWeek) return inWeek;
+  }
+  return candidates[0] || "";
 }
 
 function dateInWeek(dateKey, bounds) {
@@ -153,10 +179,14 @@ function selectClosedWeekTasks(tasks, bounds) {
   return (tasks || [])
     .filter((task) => task && !isNote(task))
     .filter(isClosed)
-    .filter((task) => dateInWeek(taskActivityDate(task, bounds.offsetMinutes), bounds))
+    .filter((task) =>
+      taskDateCandidates(task, bounds.offsetMinutes).some((dateKey) =>
+        dateInWeek(dateKey, bounds)
+      )
+    )
     .sort((a, b) => {
-      const dateDelta = taskActivityDate(a, bounds.offsetMinutes).localeCompare(
-        taskActivityDate(b, bounds.offsetMinutes)
+      const dateDelta = taskActivityDate(a, bounds.offsetMinutes, bounds).localeCompare(
+        taskActivityDate(b, bounds.offsetMinutes, bounds)
       );
       if (dateDelta !== 0) return dateDelta;
       return String(a.title || "").localeCompare(String(b.title || ""), "ru");
@@ -183,7 +213,7 @@ function groupClosedTasks(tasks, bounds) {
     }
     const group = groups.get(key);
     group.count += 1;
-    const dateKey = taskActivityDate(task, bounds.offsetMinutes);
+    const dateKey = taskActivityDate(task, bounds.offsetMinutes, bounds);
     if (dateKey && !group.dates.includes(dateKey)) {
       group.dates.push(dateKey);
     }
@@ -254,6 +284,10 @@ function formatWeekMessage(tasks, bounds, projects = []) {
       sectionOrder.push(name);
     }
     sections.get(name).push(group);
+  }
+  const ungrouped = sectionOrder.indexOf("Без проекта");
+  if (ungrouped !== -1) {
+    sectionOrder.push(...sectionOrder.splice(ungrouped, 1));
   }
 
   const lines = [
@@ -350,13 +384,18 @@ async function fetchWeekMessage({ mcpClient, timezone, now = new Date() }) {
   );
   let selected = selectClosedWeekTasks(tasks, bounds);
 
-  // Если по start-диапазону пусто, архивные/повторяющиеся могли отфильтроваться.
-  // Повторяем без дат и оставляем только закрытые за неделю.
+  // Без start API отдаёт старые записи и упирается в maxCount.
+  // Если за неделю пусто, расширяем окно на 90 дней и снова фильтруем локально.
   if (!selected.length) {
+    const lookbackStartMs = Date.parse(bounds.startIso) - 90 * MS_PER_DAY;
+    const lookbackBounds = {
+      ...bounds,
+      startIso: new Date(lookbackStartMs).toISOString(),
+    };
     tasks = await fetchTaskList(
       mcpClient,
       tool,
-      buildWeekListTasksArgs(tool, bounds, { omitStartDates: true })
+      buildWeekListTasksArgs(tool, lookbackBounds)
     );
     selected = selectClosedWeekTasks(tasks, bounds);
   }
