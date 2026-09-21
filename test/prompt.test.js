@@ -11,6 +11,8 @@ test("без Jira не упоминает рабочие тикеты", () => {
   const prompt = buildSystemPrompt({ timezone: "+03:00", now });
   assert.doesNotMatch(prompt, /Jira \(рабочие задачи\)/);
   assert.doesNotMatch(prompt, /jira_my_sprint/);
+  assert.match(prompt, /includeArchived: true/);
+  assert.match(prompt, /includeAllRecurrenceInstances: true/);
 });
 
 test("с Jira добавляет правила обзора спринта", () => {
