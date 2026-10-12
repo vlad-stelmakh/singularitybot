@@ -5,6 +5,10 @@ services:
     container_name: singularity-bot
     # Автоперезапуск при падении и после перезагрузки VPS.
     restart: unless-stopped
+    # Сеть хоста, а не мост Docker. На VPN мост резолвит api.singularity-app.com,
+    # но TCP до API не открывается (UND_ERR_CONNECT_TIMEOUT). Бот порты наружу
+    # не публикует: long-polling идёт из контейнера.
+    network_mode: host
     # Секреты и настройки берутся из .env (см. .env.example).
     env_file:
       - .env
