@@ -62,6 +62,24 @@ function parseMcpTransport(raw) {
   );
 }
 
+/**
+ * Как бот ходит в SingularityApp.
+ * - http (по умолчанию): REST API api.singularity-app.com, без внешнего MCP
+ * - mcp: официальный hosted MCP (см. SINGULARITY_MCP_TRANSPORT)
+ * - stdio: локальный mcp.js
+ */
+function parseSingularityTransport(raw) {
+  const value = String(raw == null || raw === "" ? "http" : raw)
+    .trim()
+    .toLowerCase();
+  if (value === "http" || value === "api" || value === "rest") return "http";
+  if (value === "mcp") return "mcp";
+  if (value === "stdio") return "stdio";
+  throw new Error(
+    `Некорректный SINGULARITY_TRANSPORT="${raw}". Используйте http, mcp или stdio.`
+  );
+}
+
 function parseBooleanEnv(raw, defaultValue) {
   if (raw === undefined || raw === null || String(raw).trim() === "") {
     return defaultValue;
@@ -77,5 +95,6 @@ module.exports = {
   DEFAULT_SINGULARITY_MCP_URL,
   buildOfficialMcpUrl,
   parseMcpTransport,
+  parseSingularityTransport,
   parseBooleanEnv,
 };

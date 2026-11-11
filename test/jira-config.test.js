@@ -6,7 +6,6 @@ const assert = require("node:assert/strict");
 const {
   normalizeJiraBaseUrl,
   parseJiraConfig,
-  parseJiraTransport,
   parseCliArgs,
   resolveJiraRuntimeConfig,
   buildJiraMcpArgs,
@@ -25,15 +24,7 @@ test("нормализует URL Jira", () => {
 });
 
 test("выключает Jira, если переменные не заданы", () => {
-  assert.deepEqual(parseJiraConfig({}), { enabled: false, transport: "http" });
-});
-
-test("транспорт Jira: http по умолчанию, mcp по флагу", () => {
-  assert.equal(parseJiraTransport(undefined), "http");
-  assert.equal(parseJiraTransport("API"), "http");
-  assert.equal(parseJiraTransport("stdio"), "mcp");
-  assert.equal(parseJiraTransport("mcp"), "mcp");
-  assert.throws(() => parseJiraTransport("ws"), /Некорректный JIRA_TRANSPORT/);
+  assert.deepEqual(parseJiraConfig({}), { enabled: false });
 });
 
 test("помечает неполную конфигурацию Jira", () => {
@@ -59,18 +50,6 @@ test("принимает JIRA_HOST и JIRA_USERNAME", () => {
   assert.equal(parsed.email, "me@example.com");
   assert.equal(parsed.projectKey, "PROJ");
   assert.equal(parsed.boardId, "42");
-  assert.equal(parsed.transport, "http");
-});
-
-test("читает JIRA_TRANSPORT=mcp", () => {
-  const parsed = parseJiraConfig({
-    JIRA_BASE_URL: "https://company.atlassian.net",
-    JIRA_EMAIL: "me@example.com",
-    JIRA_API_TOKEN: "secret",
-    JIRA_TRANSPORT: "mcp",
-  });
-  assert.equal(parsed.enabled, true);
-  assert.equal(parsed.transport, "mcp");
 });
 
 test("разбирает CLI и перекрывает env", () => {

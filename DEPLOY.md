@@ -49,7 +49,7 @@ docker run -d --name singularity-bot --restart unless-stopped \
 
 ## Заметки
 
-- Отдельный MCP-сервер запускать не нужно: бот подключается к официальному `https://mcp.singularity-app.com/mcp`. Если hosted MCP отклонит API-токен, бот порождает `mcp.js` как дочерний процесс по stdio. Если в `.env` заданы `JIRA_BASE_URL`, `JIRA_EMAIL` и `JIRA_API_TOKEN`, бот ходит в Jira по HTTP API (по умолчанию) или поднимает `jira-mcp.js` при `JIRA_TRANSPORT=mcp`.
+- По умолчанию бот ходит в Singularity по HTTP API (`SINGULARITY_TRANSPORT=http`). Официальный MCP: `SINGULARITY_TRANSPORT=mcp`. Если в `.env` заданы `JIRA_BASE_URL`, `JIRA_EMAIL` и `JIRA_API_TOKEN`, бот поднимает `jira-mcp.js`.
 - Сборки/транспиляции нет: `node` запускает файлы напрямую.
 - `.env` не попадает в образ (исключён в `.dockerignore`) и подключается на рантайме через `env_file`.
 - Контейнер работает в сети хоста (`network_mode: host`). На VPN исходящий трафик из моста Docker до `api.singularity-app.com` обрывается по таймауту соединения, хотя DNS отвечает. Смена сети применяется только при пересоздании контейнера: `docker compose up -d`, не `docker compose restart`.

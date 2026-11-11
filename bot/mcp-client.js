@@ -3,9 +3,8 @@
 /**
  * Клиент MCP SingularityApp для Telegram-бота.
  *
- * По умолчанию подключается к официальному HTTP MCP
- * (https://mcp.singularity-app.com/mcp) с Bearer-токеном пользователя.
- * При transport=stdio — как раньше, порождает локальный mcp.js.
+ * Фабрика MCP-клиентов SingularityApp: официальный hosted MCP (http)
+ * или локальный mcp.js (stdio). REST API — см. singularity-http-api-client.js.
  */
 
 const { StdioMcpClient } = require("./stdio-mcp-client");

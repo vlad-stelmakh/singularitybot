@@ -15,17 +15,6 @@ function normalizeJiraBaseUrl(raw) {
   return url;
 }
 
-function parseJiraTransport(raw) {
-  const value = String(raw == null || raw === "" ? "http" : raw)
-    .trim()
-    .toLowerCase();
-  if (value === "http" || value === "api" || value === "rest") return "http";
-  if (value === "mcp" || value === "stdio") return "mcp";
-  throw new Error(
-    `Некорректный JIRA_TRANSPORT="${raw}". Используйте http (REST API) или mcp.`
-  );
-}
-
 function parseJiraConfig(env = process.env) {
   const rawUrl = env.JIRA_BASE_URL || env.JIRA_HOST || env.JIRA_URL || "";
   const email = (env.JIRA_EMAIL || env.JIRA_USERNAME || "").trim();
@@ -33,11 +22,10 @@ function parseJiraConfig(env = process.env) {
   const projectKey = (env.JIRA_PROJECT_KEY || "").trim() || undefined;
   const boardId = (env.JIRA_BOARD_ID || "").trim() || undefined;
   const entryPoint = (env.JIRA_MCP_ENTRY_POINT || "").trim() || undefined;
-  const transport = parseJiraTransport(env.JIRA_TRANSPORT);
 
   const hasAny = Boolean(rawUrl || email || apiToken || projectKey || boardId);
   if (!hasAny) {
-    return { enabled: false, transport };
+    return { enabled: false };
   }
 
   const missing = [];
@@ -45,13 +33,12 @@ function parseJiraConfig(env = process.env) {
   if (!email) missing.push("JIRA_EMAIL");
   if (!apiToken) missing.push("JIRA_API_TOKEN");
   if (missing.length) {
-    return { enabled: false, incomplete: true, missing, transport };
+    return { enabled: false, incomplete: true, missing };
   }
 
   return {
     enabled: true,
     incomplete: false,
-    transport,
     baseUrl: normalizeJiraBaseUrl(rawUrl),
     email,
     apiToken,
@@ -151,7 +138,6 @@ JIRA_API_TOKEN, JIRA_PROJECT_KEY, JIRA_BOARD_ID.
 
 module.exports = {
   normalizeJiraBaseUrl,
-  parseJiraTransport,
   parseJiraConfig,
   parseCliArgs,
   resolveJiraRuntimeConfig,

@@ -68,7 +68,13 @@
    npm run bot
    ```
 
-Бот самостоятельно подключается к официальному MCP SingularityApp (`https://mcp.singularity-app.com/mcp`). Отдельно запускать `mcp.js` для работы бота не нужно. Если официальный сервер отклонит API-токен (hosted MCP рассчитан на OAuth), бот откатится на встроенный `mcp.js` как дочерний процесс. Если заданы переменные Jira, бот по умолчанию ходит в Jira REST API напрямую (`JIRA_TRANSPORT=http`); при `JIRA_TRANSPORT=mcp` поднимает `jira-mcp.js`.
+По умолчанию бот ходит в SingularityApp по HTTP API (`SINGULARITY_BASE_URL`, `SINGULARITY_TRANSPORT=http`) — без внешнего MCP. Чтобы вернуть официальный MCP:
+
+```dotenv
+SINGULARITY_TRANSPORT=mcp
+```
+
+Локальный `mcp.js`: `SINGULARITY_TRANSPORT=stdio`. Если заданы переменные Jira, бот поднимает `jira-mcp.js`.
 
 Команды в чате:
 
@@ -97,19 +103,13 @@ node mcp.js --accessToken "$SINGULARITY_ACCESS_TOKEN" -n
 
 ## Jira (необязательно)
 
-Если в `.env` заданы `JIRA_BASE_URL`, `JIRA_EMAIL` и `JIRA_API_TOKEN`, бот подключает read-only доступ к Jira Cloud. По умолчанию это прямой HTTP API (`JIRA_TRANSPORT=http`) — без дочернего MCP-процесса. Можно спросить, например:
+Если в `.env` заданы `JIRA_BASE_URL`, `JIRA_EMAIL` и `JIRA_API_TOKEN`, бот подключает read-only MCP к Jira Cloud. Можно спросить, например:
 
 - «Что у меня в текущем спринте?»
 - «На чём важно сфокусироваться сегодня?»
 - «Что с PROJ-123?»
 
 Без этих переменных интеграция выключена, бот работает только с SingularityApp. Если Jira не подключится (неверный токен, нет сети), бот продолжит отвечать по Singularity и напишет предупреждение в лог.
-
-Чтобы снова ходить через MCP по stdio (как раньше):
-
-```dotenv
-JIRA_TRANSPORT=mcp
-```
 
 Для прямого запуска Jira MCP из другого клиента:
 
@@ -132,9 +132,9 @@ DEMO_MODE=true npm run http-server
 Все параметры перечислены в `.env.example`. В частности, можно настроить:
 
 - модель для диалога и модель расшифровки;
-- URL API SingularityApp, официального MCP и OpenAI;
-- опциональный набор `toolsets` и откат на локальный `mcp.js`;
-- опциональное подключение к Jira Cloud (`JIRA_TRANSPORT=http` или `mcp`);
+- URL API SingularityApp и OpenAI;
+- `SINGULARITY_TRANSPORT=http` (REST, по умолчанию), `mcp` или `stdio`;
+- опциональное подключение к Jira Cloud;
 - часовой пояс владельца;
 - максимальную длину истории диалога и число итераций инструментов.
 
