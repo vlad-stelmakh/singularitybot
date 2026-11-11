@@ -5,12 +5,23 @@ const assert = require("node:assert/strict");
 
 const { McpClientPool } = require("../bot/mcp-client-pool");
 
-test("создаёт отдельный MCP-клиент для каждого Telegram ID", async () => {
+function fakeSingularity(extra = {}) {
+  return {
+    connect: async () => {},
+    close: async () => {},
+    getOpenAiTools: () => [
+      { type: "function", function: { name: "listTasks", parameters: {} } },
+    ],
+    ...extra,
+  };
+}
+
+test("создаёт отдельный клиент для каждого Telegram ID", async () => {
   const created = [];
   const pool = new McpClientPool({
     entryPoint: "/tmp/mcp.js",
     baseUrl: "https://example.test",
-    createClient: (options) => {
+    createHttpApiClient: (options) => {
       const client = {
         options,
         connect: async () => {},
@@ -37,7 +48,7 @@ test("не создаёт два клиента при одновременно�
   let resolveConnect;
   let createCount = 0;
   const pool = new McpClientPool({
-    createClient: () => {
+    createHttpApiClient: () => {
       createCount += 1;
       return {
         connect: () =>
@@ -59,13 +70,7 @@ test("не создаёт два клиента при одновременно�
 
 test("без Jira возвращает клиент Singularity как есть", async () => {
   const pool = new McpClientPool({
-    createClient: () => ({
-      connect: async () => {},
-      close: async () => {},
-      getOpenAiTools: () => [
-        { type: "function", function: { name: "listTasks", parameters: {} } },
-      ],
-    }),
+    createHttpApiClient: () => fakeSingularity(),
   });
   const client = await pool.getClient("111", "token-a");
   assert.equal(client.getOpenAiTools()[0].function.name, "listTasks");
@@ -74,14 +79,10 @@ test("без Jira возвращает клиент Singularity как есть"
 test("с Jira отдаёт составной клиент с инструментами обеих систем", async () => {
   const pool = new McpClientPool({
     jira: { enabled: true, baseUrl: "https://company.atlassian.net" },
-    createClient: () => ({
-      connect: async () => {},
-      close: async () => {},
-      getOpenAiTools: () => [
-        { type: "function", function: { name: "listTasks", parameters: {} } },
-      ],
-      callTool: async (name) => ({ text: name, isError: false }),
-    }),
+    createHttpApiClient: () =>
+      fakeSingularity({
+        callTool: async (name) => ({ text: name, isError: false }),
+      }),
     createJiraClient: () => ({
       connect: async () => {},
       close: async () => {},
@@ -105,13 +106,7 @@ test("с Jira отдаёт составной клиент с инструмен
 test("если Jira не подключается, бот продолжает работать через Singularity", async () => {
   const pool = new McpClientPool({
     jira: { enabled: true, baseUrl: "https://company.atlassian.net" },
-    createClient: () => ({
-      connect: async () => {},
-      close: async () => {},
-      getOpenAiTools: () => [
-        { type: "function", function: { name: "listTasks", parameters: {} } },
-      ],
-    }),
+    createHttpApiClient: () => fakeSingularity(),
     createJiraClient: () => ({
       connect: async () => {
         throw new Error("Jira unauthorized");
@@ -133,9 +128,25 @@ test("если Jira не подключается, бот продолжает �
   }
 });
 
-test("по умолчанию ходит в официальный HTTP MCP", async () => {
+test("по умолчанию ходит в HTTP API Singularity", async () => {
   const created = [];
   const pool = new McpClientPool({
+    baseUrl: "https://api.singularity-app.com",
+    createHttpApiClient: (options) => {
+      created.push(options);
+      return { connect: async () => {}, close: async () => {} };
+    },
+  });
+
+  await pool.getClient("111", "token-a");
+  assert.equal(created[0].baseUrl, "https://api.singularity-app.com");
+  assert.equal(created[0].accessToken, "token-a");
+});
+
+test("SINGULARITY_TRANSPORT=mcp ходит в официальный HTTP MCP", async () => {
+  const created = [];
+  const pool = new McpClientPool({
+    singularityTransport: "mcp",
     mcpUrl: "https://mcp.singularity-app.com/mcp",
     mcpTransport: "http",
     createClient: (options) => {
@@ -152,6 +163,7 @@ test("по умолчанию ходит в официальный HTTP MCP", as
 
 test("если официальный MCP недоступен, откативается на stdio mcp.js", async () => {
   const pool = new McpClientPool({
+    singularityTransport: "mcp",
     mcpTransport: "http",
     mcpFallbackToStdio: true,
     entryPoint: "/tmp/mcp.js",
@@ -186,6 +198,7 @@ test("если официальный MCP недоступен, откатива
 
 test("без fallback пробрасывает ошибку официального MCP", async () => {
   const pool = new McpClientPool({
+    singularityTransport: "mcp",
     mcpTransport: "http",
     mcpFallbackToStdio: false,
     createClient: () => ({

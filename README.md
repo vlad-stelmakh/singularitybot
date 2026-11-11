@@ -68,7 +68,13 @@
    npm run bot
    ```
 
-Бот самостоятельно подключается к официальному MCP SingularityApp (`https://mcp.singularity-app.com/mcp`). Отдельно запускать `mcp.js` для работы бота не нужно. Если официальный сервер отклонит API-токен (hosted MCP рассчитан на OAuth), бот откатится на встроенный `mcp.js` как дочерний процесс. Если заданы переменные Jira, бот так же поднимает `jira-mcp.js`.
+По умолчанию бот ходит в SingularityApp по HTTP API (`SINGULARITY_BASE_URL`, `SINGULARITY_TRANSPORT=http`) — без внешнего MCP. Чтобы вернуть официальный MCP:
+
+```dotenv
+SINGULARITY_TRANSPORT=mcp
+```
+
+Локальный `mcp.js`: `SINGULARITY_TRANSPORT=stdio`. Если заданы переменные Jira, бот поднимает `jira-mcp.js`.
 
 Команды в чате:
 
@@ -126,8 +132,8 @@ DEMO_MODE=true npm run http-server
 Все параметры перечислены в `.env.example`. В частности, можно настроить:
 
 - модель для диалога и модель расшифровки;
-- URL API SingularityApp, официального MCP и OpenAI;
-- опциональный набор `toolsets` и откат на локальный `mcp.js`;
+- URL API SingularityApp и OpenAI;
+- `SINGULARITY_TRANSPORT=http` (REST, по умолчанию), `mcp` или `stdio`;
 - опциональное подключение к Jira Cloud;
 - часовой пояс владельца;
 - максимальную длину истории диалога и число итераций инструментов.

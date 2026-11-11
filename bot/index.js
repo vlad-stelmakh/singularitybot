@@ -7,7 +7,7 @@
  *  - доступ только для владельца (по Telegram user ID);
  *  - текстовые сообщения, голосовые (расшифровка через OpenAI) и изображения (vision);
  *  - агент задаёт уточняющие вопросы, если данных не хватает;
- *  - работа с Singularity через официальный MCP (https://mcp.singularity-app.com/mcp);
+ *  - работа с Singularity через HTTP API (по умолчанию) или MCP;
  *  - опционально — обзор рабочих задач в Jira (спринт, фокус), если заданы JIRA_*.
  */
 
@@ -34,6 +34,7 @@ const openai = new OpenAI({
 const mcpClientPool = new McpClientPool({
   entryPoint: config.mcpEntryPoint,
   baseUrl: config.singularityBaseUrl,
+  singularityTransport: config.singularityTransport,
   mcpUrl: config.singularityMcpUrl,
   mcpTransport: config.singularityMcpTransport,
   mcpToolsets: config.singularityMcpToolsets,
@@ -398,15 +399,18 @@ async function main() {
   } else {
     console.log("Jira MCP выключен (не заданы JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN).");
   }
-  const transportLabel =
-    config.singularityMcpTransport === "stdio"
-      ? `локальный stdio (${config.mcpEntryPoint})`
-      : `официальный HTTP ${config.singularityMcpUrl}` +
-        (config.singularityMcpFallbackToStdio
-          ? " (fallback: mcp.js)"
-          : "");
-  console.log(`Singularity MCP: ${transportLabel}`);
-  console.log("Бот запущен. MCP-подключения создаются при первом сообщении пользователя.");
+  let singularityLabel;
+  if (config.singularityTransport === "http") {
+    singularityLabel = `HTTP API ${config.singularityBaseUrl}`;
+  } else if (config.singularityTransport === "stdio") {
+    singularityLabel = `локальный stdio (${config.mcpEntryPoint})`;
+  } else {
+    singularityLabel =
+      `официальный MCP ${config.singularityMcpUrl}` +
+      (config.singularityMcpFallbackToStdio ? " (fallback: mcp.js)" : "");
+  }
+  console.log(`Singularity: ${singularityLabel}`);
+  console.log("Бот запущен. Подключения создаются при первом сообщении пользователя.");
 }
 
 if (require.main === module) {

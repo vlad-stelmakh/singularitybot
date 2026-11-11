@@ -6,6 +6,7 @@ const assert = require("node:assert/strict");
 const {
   buildOfficialMcpUrl,
   parseMcpTransport,
+  parseSingularityTransport,
   parseBooleanEnv,
   DEFAULT_SINGULARITY_MCP_URL,
 } = require("../bot/http-mcp-client");
@@ -29,6 +30,14 @@ test("разбирает транспорт и boolean-флаги", () => {
   assert.equal(parseMcpTransport(undefined), "http");
   assert.equal(parseMcpTransport("STDIO"), "stdio");
   assert.throws(() => parseMcpTransport("ws"), /Некорректный SINGULARITY_MCP_TRANSPORT/);
+  assert.equal(parseSingularityTransport(undefined), "http");
+  assert.equal(parseSingularityTransport("API"), "http");
+  assert.equal(parseSingularityTransport("mcp"), "mcp");
+  assert.equal(parseSingularityTransport("stdio"), "stdio");
+  assert.throws(
+    () => parseSingularityTransport("ws"),
+    /Некорректный SINGULARITY_TRANSPORT/
+  );
   assert.equal(parseBooleanEnv(undefined, true), true);
   assert.equal(parseBooleanEnv("false", true), false);
   assert.equal(parseBooleanEnv("1", false), true);

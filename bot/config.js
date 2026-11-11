@@ -17,6 +17,7 @@ const {
   DEFAULT_SINGULARITY_MCP_URL,
   buildOfficialMcpUrl,
   parseMcpTransport,
+  parseSingularityTransport,
   parseBooleanEnv,
 } = require("./http-mcp-client");
 
@@ -85,7 +86,11 @@ const config = {
   // Singularity API / MCP
   singularityBaseUrl:
     process.env.SINGULARITY_BASE_URL || "https://api.singularity-app.com",
-  // Официальный hosted MCP (Streamable HTTP)
+  // http — REST API напрямую (по умолчанию); mcp — официальный MCP; stdio — mcp.js
+  singularityTransport: parseSingularityTransport(
+    process.env.SINGULARITY_TRANSPORT
+  ),
+  // Официальный hosted MCP (Streamable HTTP), если SINGULARITY_TRANSPORT=mcp
   singularityMcpUrl: buildOfficialMcpUrl(
     process.env.SINGULARITY_MCP_URL || DEFAULT_SINGULARITY_MCP_URL,
     process.env.SINGULARITY_MCP_TOOLSETS

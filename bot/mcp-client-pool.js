@@ -5,20 +5,20 @@ const { createSingularityMcpClient } = require("./mcp-client");
 const { StdioMcpClient } = require("./stdio-mcp-client");
 const { CompositeMcpClient } = require("./composite-mcp-client");
 const { buildJiraMcpArgs } = require("../jira/config");
+const { SingularityHttpApiClient } = require("./singularity-http-api-client");
 const {
   DEFAULT_SINGULARITY_MCP_URL,
   buildOfficialMcpUrl,
 } = require("./http-mcp-client");
 
 /**
- * Лениво создаёт отдельный MCP-процесс/сессию для каждого Telegram-пользователя.
+ * Лениво создаёт отдельный клиент Singularity для каждого Telegram-пользователя.
  * Экземпляры не делят access token, поэтому операции одного пользователя
  * не могут выполняться от имени другого аккаунта Singularity.
  *
- * По умолчанию бот подключается к официальному HTTP MCP
- * (https://mcp.singularity-app.com/mcp). Если сервер отклоняет токен
- * (нужен OAuth, а не API-ключ) или недоступен — можно откатиться
- * на встроенный mcp.js по stdio.
+ * По умолчанию бот ходит в REST API (api.singularity-app.com) без внешнего MCP.
+ * SINGULARITY_TRANSPORT=mcp включает официальный hosted MCP
+ * (https://mcp.singularity-app.com/mcp) с откатом на mcp.js.
  *
  * Опциональный Jira MCP общий для процесса: это один рабочий аккаунт.
  */
@@ -27,16 +27,19 @@ class McpClientPool {
     entryPoint,
     baseUrl,
     jira,
+    singularityTransport,
     mcpUrl,
     mcpTransport,
     mcpToolsets,
     mcpFallbackToStdio,
     createClient,
+    createHttpApiClient,
     createStdioClient,
     createJiraClient,
   } = {}) {
     this.entryPoint = entryPoint;
     this.baseUrl = baseUrl;
+    this.singularityTransport = singularityTransport || "http";
     this.mcpUrl = buildOfficialMcpUrl(
       mcpUrl || DEFAULT_SINGULARITY_MCP_URL,
       mcpToolsets
@@ -46,6 +49,9 @@ class McpClientPool {
     this.mcpFallbackToStdio =
       mcpFallbackToStdio === undefined ? true : Boolean(mcpFallbackToStdio);
     this.jira = jira && jira.enabled ? jira : null;
+    this.createHttpApiClient =
+      createHttpApiClient ||
+      ((options) => new SingularityHttpApiClient(options));
     this.createClient =
       createClient ||
       ((options) => createSingularityMcpClient(options));
@@ -85,8 +91,19 @@ class McpClientPool {
   }
 
   async connectSingularityClient(accessToken) {
+    if (this.singularityTransport === "http") {
+      const client = this.createHttpApiClient({
+        baseUrl: this.baseUrl,
+        accessToken,
+      });
+      await client.connect();
+      return client;
+    }
+
+    const mcpKind =
+      this.singularityTransport === "stdio" ? "stdio" : this.mcpTransport;
     const preferred = this.createClient({
-      transport: this.mcpTransport,
+      transport: mcpKind,
       url: this.mcpUrl,
       toolsets: this.mcpToolsets,
       entryPoint: this.entryPoint,
@@ -100,7 +117,7 @@ class McpClientPool {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const canFallback =
-        this.mcpTransport !== "stdio" && this.mcpFallbackToStdio;
+        mcpKind !== "stdio" && this.mcpFallbackToStdio;
       if (!canFallback) throw err;
 
       console.warn(
