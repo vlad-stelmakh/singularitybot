@@ -390,13 +390,17 @@ async function main() {
       config.jira.projectKey && `проект ${config.jira.projectKey}`,
       config.jira.boardId && `доска ${config.jira.boardId}`,
     ].filter(Boolean);
+    const via =
+      config.jira.transport === "mcp"
+        ? "MCP stdio"
+        : "HTTP API";
     console.log(
-      `Jira MCP включён: ${config.jira.baseUrl}` +
+      `Jira включена (${via}): ${config.jira.baseUrl}` +
         (extras.length ? ` (${extras.join(", ")})` : "") +
         ". Подключение при первом сообщении."
     );
   } else {
-    console.log("Jira MCP выключен (не заданы JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN).");
+    console.log("Jira выключена (не заданы JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN).");
   }
   const transportLabel =
     config.singularityMcpTransport === "stdio"

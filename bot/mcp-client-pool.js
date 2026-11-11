@@ -5,6 +5,7 @@ const { createSingularityMcpClient } = require("./mcp-client");
 const { StdioMcpClient } = require("./stdio-mcp-client");
 const { CompositeMcpClient } = require("./composite-mcp-client");
 const { buildJiraMcpArgs } = require("../jira/config");
+const { JiraHttpToolsClient } = require("../jira/http-tools-client");
 const {
   DEFAULT_SINGULARITY_MCP_URL,
   buildOfficialMcpUrl,
@@ -133,7 +134,7 @@ class McpClientPool {
         this.jiraDisabled = true;
         const message = err instanceof Error ? err.message : String(err);
         console.warn(
-          `[warn] Jira MCP не удалось подключить, бот работает без него: ${message}`
+          `[warn] Jira не удалось подключить, бот работает без него: ${message}`
         );
         return null;
       }
@@ -164,6 +165,17 @@ class McpClientPool {
 }
 
 function createDefaultJiraClient(jira) {
+  const transport = jira.transport || "http";
+  if (transport === "http") {
+    return new JiraHttpToolsClient({
+      baseUrl: jira.baseUrl,
+      email: jira.email,
+      apiToken: jira.apiToken,
+      projectKey: jira.projectKey,
+      boardId: jira.boardId,
+    });
+  }
+
   const entryPoint =
     jira.entryPoint || path.join(__dirname, "..", "jira-mcp.js");
   return new StdioMcpClient({
@@ -180,4 +192,4 @@ function createDefaultJiraClient(jira) {
   });
 }
 
-module.exports = { McpClientPool };
+module.exports = { McpClientPool, createDefaultJiraClient };

@@ -127,7 +127,7 @@ test("если Jira не подключается, бот продолжает �
     const client = await pool.getClient("111", "token-a");
     assert.equal(client.getOpenAiTools()[0].function.name, "listTasks");
     assert.equal(pool.jiraDisabled, true);
-    assert.match(warn.join("\n"), /Jira MCP не удалось подключить/);
+    assert.match(warn.join("\n"), /Jira не удалось подключить/);
   } finally {
     console.warn = originalWarn;
   }

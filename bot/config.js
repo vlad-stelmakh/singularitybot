@@ -107,6 +107,7 @@ const config = {
   jira: jira.enabled
     ? {
         enabled: true,
+        transport: jira.transport || "http",
         baseUrl: jira.baseUrl,
         email: jira.email,
         apiToken: jira.apiToken,
